@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Control de Personal</title>
+<style>
+  :root {
+    --blue:    #1a4e8a;
+    --blue2:   #2563eb;
+    --sky:     #dbeafe;
+    --green:   #16a34a;
+    --red:     #dc2626;
+    --yellow:  #d97706;
+    --gray:    #6b7280;
+    --light:   #f8fafc;
+    --border:  #e2e8f0;
+    --radius:  8px;
+    --shadow:  0 2px 8px rgba(0,0,0,.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #f1f5f9; color: #1e293b; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+    background: var(--blue); color: #fff; display: flex; flex-direction: column;
+    overflow-y: auto; z-index: 100;
+  }
+  #sidebar .logo {
+    padding: 22px 18px 18px;
+    font-weight: 700; font-size: 1rem; line-height: 1.3;
+    border-bottom: 1px solid rgba(255,255,255,.15);
+  }
+  #sidebar .logo span { display: block; font-size:.72rem; opacity:.65; font-weight:400; margin-top:3px; }
+  #sidebar nav { flex: 1; padding: 10px 0; }
+  #sidebar nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 18px; color: rgba(255,255,255,.8);
+    text-decoration: none; font-size: .88rem; cursor: pointer;
+    transition: background .15s;
+  }
+  #sidebar nav a:hover, #sidebar nav a.active {
+    background: rgba(255,255,255,.15); color: #fff;
+  }
+  #sidebar nav .section-title {
+    padding: 14px 18px 4px; font-size: .68rem; letter-spacing: .08em;
+    text-transform: uppercase; opacity: .5; font-weight: 600;
+  }
+
+  /* ── Main ── */
+  #main { margin-left: 220px; padding: 28px; min-height: 100vh; }
+
+  /* ── Page header ── */
+  .page-header { margin-bottom: 22px; }
+  .page-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--blue); }
+  .page-header p  { color: var(--gray); font-size: .88rem; margin-top: 4px; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px; margin-bottom: 20px;
+  }
+  .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 14px; color: var(--blue); }
+
+  /* ── Stats ── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 14px; margin-bottom: 22px; }
+  .stat { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow);
+          padding:16px 18px; display:flex; flex-direction:column; gap:4px; }
+  .stat .val { font-size:1.8rem; font-weight:700; color:var(--blue2); }
+  .stat .lbl { font-size:.78rem; color:var(--gray); }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th { background: var(--sky); color: var(--blue); font-weight: 600;
+       padding: 9px 12px; text-align: left; white-space: nowrap; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .empty { text-align:center; color:var(--gray); padding:30px; font-size:.9rem; }
+
+  /* ── Badges ── */
+  .badge {
+    display:inline-block; padding:2px 9px; border-radius:99px; font-size:.75rem; font-weight:600;
+  }
+  .badge-green  { background:#dcfce7; color:#15803d; }
+  .badge-red    { background:#fee2e2; color:#991b1b; }
+  .badge-yellow { background:#fef9c3; color:#854d0e; }
+  .badge-blue   { background:#dbeafe; color:#1e40af; }
+  .badge-gray   { background:#f3f4f6; color:#374151; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: .83rem; font-weight: 600; transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-primary   { background: var(--blue2); color: #fff; }
+  .btn-success   { background: var(--green); color: #fff; }
+  .btn-danger    { background: var(--red);   color: #fff; }
+  .btn-warning   { background: var(--yellow);color: #fff; }
+  .btn-outline   { background: transparent; border: 1.5px solid var(--border); color: #374151; }
+  .btn-sm { padding: 4px 9px; font-size: .78rem; }
+  .toolbar { display:flex; gap:8px; margin-bottom:14px; align-items:center; flex-wrap:wrap; }
+  .toolbar input[type=text] {
+    flex: 1; min-width: 180px; padding: 7px 12px;
+    border: 1.5px solid var(--border); border-radius: 6px; font-size: .85rem;
+  }
+
+  /* ── Modal ── */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.4); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 10px; width: 480px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 30px rgba(0,0,0,.2);
+  }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-header h2 { font-size: 1rem; font-weight: 700; color: var(--blue); }
+  .modal-body   { padding: 18px 20px; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border);
+                  display: flex; justify-content: flex-end; gap: 8px; }
+  .close-btn { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--gray); }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 13px; }
+  .form-group label { display: block; font-size: .82rem; font-weight: 600;
+                      color: #374151; margin-bottom: 4px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 8px 10px;
+    border: 1.5px solid var(--border); border-radius: 6px; font-size: .88rem;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none; border-color: var(--blue2); box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 22px; right: 22px; z-index: 999;
+    background: #1e293b; color: #fff; padding: 11px 18px;
+    border-radius: 8px; font-size: .85rem; font-weight: 500;
+    opacity: 0; transform: translateY(10px);
+    transition: opacity .25s, transform .25s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.error { background: var(--red); }
+
+  /* ── View sections ── */
+  .view { display: none; }
+  .view.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside id="sidebar">
+  <div class="logo">
+    🏢 Control de Personal
+    <span>Sistema de Gestión</span>
+  </div>
+  <nav>
+    <a onclick="show('dashboard')" class="active" data-view="dashboard">📊 Dashboard</a>
+    <div class="section-title">Tablas</div>
+    <a onclick="show('empleados')"    data-view="empleados">👤 Empleados</a>
+    <a onclick="show('turnos')"       data-view="turnos">🕐 Turnos</a>
+    <a onclick="show('guardias')"     data-view="guardias">🛡️ Guardias</a>
+    <a onclick="show('tareas')"       data-view="tareas">✅ Tareas</a>
+    <a onclick="show('asignaciones')" data-view="asignaciones">🔗 Asignaciones</a>
+    <a onclick="show('ausencias')"    data-view="ausencias">📅 Ausencias</a>
+    <div class="section-title">Consultas</div>
+    <a onclick="show('personal-disponible')" data-view="personal-disponible">🟢 Personal Disponible</a>
+    <a onclick="show('carga-trabajo')"       data-view="carga-trabajo">📈 Carga de Trabajo</a>
+  </nav>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main id="main">
+
+  <!-- DASHBOARD -->
+  <section id="v-dashboard" class="view active">
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Resumen general del sistema</p>
+    </div>
+    <div class="stats" id="stats-grid">
+      <div class="stat"><div class="val" id="stat-empleados">—</div><div class="lbl">Empleados</div></div>
+      <div class="stat"><div class="val" id="stat-turnos">—</div><div class="lbl">Turnos</div></div>
+      <div class="stat"><div class="val" id="stat-guardias">—</div><div class="lbl">Guardias</div></div>
+      <div class="stat"><div class="val" id="stat-tareas">—</div><div class="lbl">Tareas</div></div>
+      <div class="stat"><div class="val" id="stat-asignaciones">—</div><div class="lbl">Asignaciones</div></div>
+      <div class="stat"><div class="val" id="stat-ausencias">—</div><div class="lbl">Ausencias</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tareas recientes</div>
+      <div class="table-wrap" id="dash-tareas"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Ausencias activas</div>
+      <div class="table-wrap" id="dash-ausencias"></div>
+    </div>
+  </section>
+
+  <!-- EMPLEADOS -->
+  <section id="v-empleados" class="view">
+    <div class="page-header"><h1>👤 Empleados</h1><p>Gestión del personal</p></div>
+    <div class="card">
+      <div class="toolbar">
+        <input type="text" id="search-empleados" placeholder="Buscar..." oninput="filterTable('empleados-table', this.value)">
+        <button class="btn btn-primary" onclick="openModal('empleados')">+ Nuevo</button>
+      </div>
+      <div class="table-wrap" id="empleados-table"></div>
+    </div>
+  </section>
+
+  <!-- TURNOS -->
+  <section id="v-turnos" class="view">
+    <div class="page-header"><h1>🕐 Turnos</h1><p>Tipos de turno disponibles</p></div>
+    <div class="card">
+      <div class="toolbar">
+        <input type="text" placeholder="Buscar..." oninput="filterTable('turnos-table', this.value)">
+        <button class="btn btn-primary" onclick="openModal('turnos')">+ Nuevo</button>
+      </div>
+      <div class="table-wrap" id="turnos-table"></div>
+    </div>
+  </section>
+
+  <!-- GUARDIAS -->
+  <section id="v-guardias" class="view">
+    <div class="page-header"><h1>🛡️ Guardias</h1><p>Asignación de guardias por semana</p></div>
+    <div class="card">
+      <div class="toolbar">
+        <input type="text" placeholder="Buscar..." oninput="filterTable('guardias-table', this.value)">
+        <button class="btn btn-primary" onclick="openModal('guardias')">+ Nueva</button>
+      </div>
+      <div class="table-wrap" id="guardias-table"></div>
+    </div>
+  </section>
+
+  <!-- TAREAS -->
+  <section id="v-tareas" class="view">
+    <div class="page-header"><h1>✅ Tareas</h1><p>Tareas y su estado</p></div>
+    <div class="card">
+      <div class="toolbar">
+        <input type="text" placeholder="Buscar..." oninput="filterTable('tareas-table', this.value)">
+        <button class="btn btn-primary" onclick="openModal('tareas')">+ Nueva</button>
+      </div>
+      <div class="table-wrap" id="tareas-table"></div>
+    </div>
+  </section>
+
+  <!-- ASIGNACIONES -->
+  <section id="v-asignaciones" class="view">
+    <div class="page-header"><h1>🔗 Asignaciones</h1><p>Empleados asignados a tareas</p></div>
+    <div class="card">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openModal('asignaciones')">+ Nueva</button>
+      </div>
+      <div class="table-wrap" id="asignaciones-table"></div>
+    </div>
+  </section>
+
+  <!-- AUSENCIAS -->
+  <section id="v-ausencias" class="view">
+    <div class="page-header"><h1>📅 Ausencias</h1><p>Registro de ausencias del personal</p></div>
+    <div class="card">
+      <div class="toolbar">
+        <input type="text" placeholder="Buscar..." oninput="filterTable('ausencias-table', this.value)">
+        <button class="btn btn-primary" onclick="openModal('ausencias')">+ Nueva</button>
+      </div>
+      <div class="table-wrap" id="ausencias-table"></div>
+    </div>
+  </section>
+
+  <!-- CONSULTA: Personal Disponible -->
+  <section id="v-personal-disponible" class="view">
+    <div class="page-header"><h1>🟢 Personal Disponible</h1><p>Empleados activos en el sistema</p></div>
+    <div class="card">
+      <button class="btn btn-outline" onclick="loadConsulta('personal-disponible')" style="margin-bottom:14px">↺ Actualizar</button>
+      <div class="table-wrap" id="consulta-personal-table"></div>
+    </div>
+  </section>
+
+  <!-- CONSULTA: Carga de Trabajo -->
+  <section id="v-carga-trabajo" class="view">
+    <div class="page-header"><h1>📈 Carga de Trabajo</h1><p>Tareas asignadas por empleado</p></div>
+    <div class="card">
+      <button class="btn btn-outline" onclick="loadConsulta('carga-trabajo')" style="margin-bottom:14px">↺ Actualizar</button>
+      <div class="table-wrap" id="consulta-carga-table"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════ MODAL ═══════════ -->
+<div class="overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Formulario</h2>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="modal-save" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════
+const state = {
+  empleados: [], turnos: [], guardias: [],
+  tareas: [], asignaciones: [], ausencias: [],
+  modalEntity: null, modalMode: null, modalId: null
+};
+
+// ══════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════
+function show(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('v-' + view).classList.add('active');
+  document.querySelector(`[data-view="${view}"]`).classList.add('active');
+
+  const loaders = {
+    'dashboard': loadDashboard,
+    'empleados': () => loadTable('empleados'),
+    'turnos':    () => loadTable('turnos'),
+    'guardias':  () => loadTable('guardias'),
+    'tareas':    () => loadTable('tareas'),
+    'asignaciones': () => loadTable('asignaciones'),
+    'ausencias': () => loadTable('ausencias'),
+    'personal-disponible': () => loadConsulta('personal-disponible'),
+    'carga-trabajo':       () => loadConsulta('carga-trabajo'),
+  };
+  if (loaders[view]) loaders[view]();
+}
+
+// ══════════════════════════════════════════
+// API helpers
+// ══════════════════════════════════════════
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  });
+  if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+  return res.json();
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+async function loadDashboard() {
+  const [emp, tur, gua, tar, asi, aus] = await Promise.all([
+    api('/empleados'), api('/turnos'), api('/guardias'),
+    api('/tareas'), api('/asignaciones'), api('/ausencias')
+  ]);
+  Object.assign(state, { empleados: emp, turnos: tur, guardias: gua,
+                          tareas: tar, asignaciones: asi, ausencias: aus });
+
+  document.getElementById('stat-empleados').textContent   = emp.length;
+  document.getElementById('stat-turnos').textContent      = tur.length;
+  document.getElementById('stat-guardias').textContent    = gua.length;
+  document.getElementById('stat-tareas').textContent      = tar.length;
+  document.getElementById('stat-asignaciones').textContent = asi.length;
+  document.getElementById('stat-ausencias').textContent   = aus.length;
+
+  // Tareas recientes
+  document.getElementById('dash-tareas').innerHTML = renderTable(
+    ['ID','Nombre','Estado','Prioridad','Inicio','Fin'],
+    tar.slice(0,5).map(t => [
+      t.id_tarea, t.nombre_tarea,
+      badge(t.estado_tarea), badge(t.prioridad, 'prioridad'),
+      fmt(t.fecha_inicio), fmt(t.fecha_fin)
+    ]), true
+  );
+  // Ausencias
+  document.getElementById('dash-ausencias').innerHTML = renderTable(
+    ['ID','Empleado','Tipo','Inicio','Fin'],
+    aus.map(a => [a.id_ausencia, a.nombre_empleado, a.tipo_ausencia, fmt(a.fecha_inicio), fmt(a.fecha_fin)]),
+    true
+  );
+}
+
+// ══════════════════════════════════════════
+// TABLAS
+// ══════════════════════════════════════════
+async function loadTable(entity) {
+  const data = await api('/' + entity);
+  state[entity] = data;
+  renderEntity(entity, data);
+}
+
+function renderEntity(entity, data) {
+  const configs = {
+    empleados: {
+      headers: ['ID','Nombre','Identificación','Departamento','Teléfono','Jornada','Estado',''],
+      row: r => [r.id_empleado, r.nombre, r.identificacion, r.departamento,
+                 r.telefono, r.tipo_jornada, badge(r.estado), actions('empleados', r.id_empleado)]
+    },
+    turnos: {
+      headers: ['ID','Tipo de turno','Inicio','Salida',''],
+      row: r => [r.id_turno, r.tipo_turno, r.hora_inicio, r.hora_salida, actions('turnos', r.id_turno)]
+    },
+    guardias: {
+      headers: ['ID','Empleado','Semana','Tipo de guardia',''],
+      row: r => [r.id_guardia, r.nombre_empleado || r.id_empleado, r.semana, r.tipo_guardia, actions('guardias', r.id_guardia)]
+    },
+    tareas: {
+      headers: ['ID','Nombre','Estado','Prioridad','Inicio','Fin',''],
+      row: r => [r.id_tarea, r.nombre_tarea, badge(r.estado_tarea),
+                 badge(r.prioridad,'prioridad'), fmt(r.fecha_inicio), fmt(r.fecha_fin), actions('tareas', r.id_tarea)]
+    },
+    asignaciones: {
+      headers: ['ID','Empleado','Tarea',''],
+      row: r => [r.id_asignacion, r.nombre_empleado || r.id_empleado,
+                 r.nombre_tarea || r.id_tarea, actionsDelete('asignaciones', r.id_asignacion)]
+    },
+    ausencias: {
+      headers: ['ID','Empleado','Tipo','Inicio','Fin',''],
+      row: r => [r.id_ausencia, r.nombre_empleado || r.id_empleado, r.tipo_ausencia,
+                 fmt(r.fecha_inicio), fmt(r.fecha_fin), actions('ausencias', r.id_ausencia)]
+    },
+  };
+  const cfg = configs[entity];
+  document.getElementById(entity + '-table').innerHTML =
+    renderTable(cfg.headers, data.map(cfg.row));
+}
+
+function renderTable(headers, rows, noActions = false) {
+  if (!rows.length) return `<div class="empty">Sin registros</div>`;
+  let h = headers.map(h => `<th>${h}</th>`).join('');
+  let b = rows.map(r =>
+    `<tr>${r.map(c => `<td>${c ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  return `<table><thead><tr>${h}</tr></thead><tbody>${b}</tbody></table>`;
+}
+
+function actions(entity, id) {
+  return `<div style="display:flex;gap:5px">
+    <button class="btn btn-warning btn-sm" onclick="openModal('${entity}',${id})">✏️</button>
+    <button class="btn btn-danger  btn-sm" onclick="deleteRecord('${entity}',${id})">🗑️</button>
+  </div>`;
+}
+function actionsDelete(entity, id) {
+  return `<button class="btn btn-danger btn-sm" onclick="deleteRecord('${entity}',${id})">🗑️</button>`;
+}
+
+// ══════════════════════════════════════════
+// CONSULTAS
+// ══════════════════════════════════════════
+async function loadConsulta(type) {
+  const data = await api('/consultas/' + type);
+  if (type === 'personal-disponible') {
+    document.getElementById('consulta-personal-table').innerHTML = renderTable(
+      ['Nombre','Departamento','Estado'],
+      data.map(r => [r.nombre, r.departamento, badge(r.estado)])
+    );
+  } else {
+    document.getElementById('consulta-carga-table').innerHTML = renderTable(
+      ['Empleado','Total Tareas'],
+      data.map(r => [r.nombre, `<strong>${r.total_tareas}</strong>`])
+    );
+  }
+}
+
+// ══════════════════════════════════════════
+// MODAL / FORMULARIOS
+// ══════════════════════════════════════════
+const forms = {
+  empleados: (d={}) => `
+    <div class="form-row">
+      <div class="form-group"><label>Nombre *</label><input id="f-nombre" value="${d.nombre||''}"></div>
+      <div class="form-group"><label>Identificación *</label><input id="f-identificacion" value="${d.identificacion||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Departamento</label><input id="f-departamento" value="${d.departamento||''}"></div>
+      <div class="form-group"><label>Teléfono</label><input id="f-telefono" value="${d.telefono||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo de Jornada</label>
+        <select id="f-tipo_jornada">
+          ${['Diurna','Nocturna','Mixta'].map(o=>`<option ${d.tipo_jornada===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Estado</label>
+        <select id="f-estado">
+          ${['Activo','Inactivo'].map(o=>`<option ${d.estado===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+    </div>`,
+
+  turnos: (d={}) => `
+    <div class="form-group"><label>Tipo de turno</label><input id="f-tipo_turno" value="${d.tipo_turno||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Hora inicio</label><input id="f-hora_inicio" type="time" value="${d.hora_inicio||''}"></div>
+      <div class="form-group"><label>Hora salida</label><input id="f-hora_salida" type="time" value="${d.hora_salida||''}"></div>
+    </div>`,
+
+  guardias: (d={}) => `
+    <div class="form-group"><label>Empleado</label>
+      <select id="f-id_empleado">
+        <option value="">-- Selecciona --</option>
+        ${state.empleados.map(e=>`<option value="${e.id_empleado}" ${d.id_empleado==e.id_empleado?'selected':''}>${e.nombre}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Semana (ej. 2026-W23)</label><input id="f-semana" value="${d.semana||''}"></div>
+      <div class="form-group"><label>Tipo de guardia</label>
+        <select id="f-tipo_guardia">
+          ${['Diurna','Nocturna','Mixta','Fin de semana'].map(o=>`<option ${d.tipo_guardia===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+    </div>`,
+
+  tareas: (d={}) => `
+    <div class="form-group"><label>Nombre de la tarea *</label><input id="f-nombre_tarea" value="${d.nombre_tarea||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Estado</label>
+        <select id="f-estado_tarea">
+          ${['Pendiente','En progreso','Completada','Cancelada'].map(o=>`<option ${d.estado_tarea===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Prioridad</label>
+        <select id="f-prioridad">
+          ${['Alta','Media','Baja'].map(o=>`<option ${d.prioridad===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha inicio</label><input id="f-fecha_inicio" type="date" value="${fmtISO(d.fecha_inicio)}"></div>
+      <div class="form-group"><label>Fecha fin</label><input id="f-fecha_fin" type="date" value="${fmtISO(d.fecha_fin)}"></div>
+    </div>`,
+
+  asignaciones: (d={}) => `
+    <div class="form-group"><label>Empleado</label>
+      <select id="f-id_empleado">
+        <option value="">-- Selecciona --</option>
+        ${state.empleados.map(e=>`<option value="${e.id_empleado}">${e.nombre}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Tarea</label>
+      <select id="f-id_tarea">
+        <option value="">-- Selecciona --</option>
+        ${state.tareas.map(t=>`<option value="${t.id_tarea}">${t.nombre_tarea}</option>`).join('')}
+      </select>
+    </div>`,
+
+  ausencias: (d={}) => `
+    <div class="form-group"><label>Empleado</label>
+      <select id="f-id_empleado">
+        <option value="">-- Selecciona --</option>
+        ${state.empleados.map(e=>`<option value="${e.id_empleado}" ${d.id_empleado==e.id_empleado?'selected':''}>${e.nombre}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Tipo de ausencia</label>
+      <select id="f-tipo_ausencia">
+        ${['Vacaciones','Enfermedad','Personal','Maternidad/Paternidad','Otro'].map(o=>`<option ${d.tipo_ausencia===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha inicio</label><input id="f-fecha_inicio" type="date" value="${fmtISO(d.fecha_inicio)}"></div>
+      <div class="form-group"><label>Fecha fin</label><input id="f-fecha_fin" type="date" value="${fmtISO(d.fecha_fin)}"></div>
+    </div>`,
+};
+
+async function openModal(entity, id = null) {
+  // Asegurar que los datos de referencia estén cargados
+  if (!state.empleados.length) state.empleados = await api('/empleados');
+  if (!state.tareas.length)    state.tareas    = await api('/tareas');
+
+  state.modalEntity = entity;
+  state.modalMode   = id ? 'edit' : 'new';
+  state.modalId     = id;
+
+  const titles = {
+    empleados:'Empleado', turnos:'Turno', guardias:'Guardia',
+    tareas:'Tarea', asignaciones:'Asignación', ausencias:'Ausencia'
+  };
+  document.getElementById('modal-title').textContent =
+    (id ? 'Editar ' : 'Nuevo ') + titles[entity];
+
+  let data = {};
+  if (id) {
+    data = await api('/' + entity + '/' + id).catch(() =>
+      state[entity].find(r => r['id_' + entity.replace('asignaciones','asignacion').replace('ausencias','ausencia')] == id) || {}
+    );
+  }
+  document.getElementById('modal-body').innerHTML = forms[entity](data);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function getField(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : undefined;
+}
+
+async function saveModal() {
+  const { modalEntity: ent, modalMode: mode, modalId: id } = state;
+  let body = {};
+
+  const fields = {
+    empleados:    ['nombre','identificacion','departamento','telefono','tipo_jornada','estado'],
+    turnos:       ['tipo_turno','hora_inicio','hora_salida'],
+    guardias:     ['id_empleado','semana','tipo_guardia'],
+    tareas:       ['nombre_tarea','estado_tarea','prioridad','fecha_inicio','fecha_fin'],
+    asignaciones: ['id_empleado','id_tarea'],
+    ausencias:    ['id_empleado','tipo_ausencia','fecha_inicio','fecha_fin'],
+  };
+
+  fields[ent].forEach(f => { body[f] = getField('f-' + f); });
+
+  try {
+    if (mode === 'new') {
+      await api('/' + ent, { method: 'POST', body: JSON.stringify(body) });
+      toast('Registro creado ✓');
+    } else {
+      await api('/' + ent + '/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      toast('Registro actualizado ✓');
+    }
+    closeModal();
+    loadTable(ent);
+  } catch(e) {
+    toast('Error: ' + e.message, true);
+  }
+}
+
+async function deleteRecord(entity, id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  try {
+    await api('/' + entity + '/' + id, { method: 'DELETE' });
+    toast('Registro eliminado');
+    loadTable(entity);
+  } catch(e) {
+    toast('Error: ' + e.message, true);
+  }
+}
+
+// ══════════════════════════════════════════
+// UTILIDADES
+// ══════════════════════════════════════════
+function filterTable(containerId, query) {
+  const tbl = document.getElementById(containerId).querySelector('table');
+  if (!tbl) return;
+  const q = query.toLowerCase();
+  tbl.querySelectorAll('tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function badge(val, type = 'estado') {
+  if (!val) return '';
+  const maps = {
+    estado: { 'Activo':'green','Inactivo':'red' },
+    default: { 'Alta':'red','Media':'yellow','Baja':'green',
+               'Pendiente':'yellow','En progreso':'blue','Completada':'green','Cancelada':'gray',
+               'Vacaciones':'blue','Enfermedad':'red' }
+  };
+  const m = type === 'prioridad' ? maps.default : (maps[type] || maps.default);
+  const color = m[val] || 'gray';
+  return `<span class="badge badge-${color}">${val}</span>`;
+}
+
+function fmt(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('es-CR', {day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function fmtISO(d) {
+  if (!d) return '';
+  return new Date(d).toISOString().slice(0,10);
+}
+
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = isError ? 'error' : '';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+loadDashboard();
+</script>
+</body>
+</html>
